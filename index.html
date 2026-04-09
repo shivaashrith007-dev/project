@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEO Monthly Report Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e13;--surf:#12151c;--card:#181c27;--cardhov:#1d2130;
+  --b0:rgba(255,255,255,0.05);--b1:rgba(255,255,255,0.10);--b2:rgba(255,255,255,0.18);
+  --gold:#c9a84c;--goldd:#8a6e2f;--goldf:#f0d080;
+  --teal:#1d9e75;--blue:#3a7bd5;--amber:#ef9f27;--red:#e05555;
+  --tp:#eaedf5;--ts:#7a7f98;--tm:#454a62;
+  --r:10px;--rm:8px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tp);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* ── LOGIN ── */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.lbox{background:var(--card);border:0.5px solid var(--b1);border-radius:16px;padding:40px 36px;width:100%;max-width:400px}
+.llogo{font-size:10px;font-weight:500;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.ltitle{font-size:24px;font-weight:500;margin-bottom:6px}
+.lsub{font-size:13px;color:var(--ts);margin-bottom:28px}
+.rtabs{display:flex;background:var(--surf);border-radius:var(--rm);overflow:hidden;border:0.5px solid var(--b0);margin-bottom:24px}
+.rtab{flex:1;padding:9px;font-size:13px;font-weight:500;border:none;background:none;color:var(--ts);cursor:pointer;font-family:inherit;transition:all .15s}
+.rtab.active{background:var(--gold);color:#1a1100}
+.flabel{font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block}
+.pinwrap{display:flex;gap:10px;margin-bottom:8px}
+.pinfield{flex:1;background:var(--surf);border:0.5px solid var(--b1);border-radius:var(--rm);color:var(--tp);font-size:20px;font-family:'DM Mono',monospace;text-align:center;padding:10px;letter-spacing:.3em;width:100%;transition:border-color .15s}
+.pinfield:focus{outline:none;border-color:var(--goldd)}
+.lerr{font-size:12px;color:var(--red);min-height:18px;margin-bottom:12px;text-align:center}
+.lbtn{width:100%;background:var(--gold);border:none;border-radius:var(--rm);color:#1a1100;font-size:14px;font-weight:500;padding:13px;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.lbtn:hover{opacity:.88}
+.lhint{font-size:11px;color:var(--tm);margin-top:16px;text-align:center;line-height:1.8}
+.lhint strong{color:var(--ts)}
+
+/* ── APP SHELL ── */
+#app{display:none;flex-direction:column;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;background:var(--surf);border-bottom:0.5px solid var(--b0);flex-shrink:0}
+.tb-left{display:flex;align-items:center;gap:14px}
+.tb-dot{width:8px;height:8px;border-radius:50%;background:var(--gold)}
+.tb-title{font-size:14px;font-weight:500}
+.tb-period{font-size:12px;color:var(--ts);padding:3px 10px;background:var(--bg);border-radius:20px;border:0.5px solid var(--b0)}
+.tb-right{display:flex;align-items:center;gap:10px}
+.rbadge{font-size:10px;font-weight:500;padding:4px 10px;border-radius:20px;letter-spacing:.04em}
+.rb-finance{background:rgba(58,123,213,.15);color:#6ba4f0}
+.rb-ceo{background:rgba(201,168,76,.15);color:var(--gold)}
+.icon-btn{background:none;border:0.5px solid var(--b1);border-radius:6px;color:var(--ts);font-size:12px;padding:5px 12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.icon-btn:hover{border-color:var(--b2);color:var(--tp)}
+
+/* ── PERIOD BAR ── */
+.periodbar{display:flex;align-items:center;gap:10px;padding:12px 24px;background:var(--surf);border-bottom:0.5px solid var(--b0);flex-wrap:wrap}
+.mscroll{display:flex;gap:4px;flex-wrap:wrap}
+.mpill{font-size:11px;font-weight:500;padding:5px 11px;border-radius:20px;border:0.5px solid var(--b0);background:none;color:var(--ts);cursor:pointer;font-family:inherit;transition:all .15s}
+.mpill:hover{border-color:var(--b1);color:var(--tp)}
+.mpill.on{background:var(--gold);color:#1a1100;border-color:transparent}
+.yrsel{background:var(--surf);border:0.5px solid var(--b1);border-radius:6px;color:var(--tp);font-size:12px;padding:5px 10px;cursor:pointer;font-family:inherit}
+
+/* ── NAV ── */
+.navrow{display:flex;background:var(--surf);border-bottom:0.5px solid var(--b0);padding:0 24px;gap:0}
+.ntab{font-size:13px;font-weight:500;padding:11px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--ts);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap}
+.ntab:hover{color:var(--tp)}
+.ntab.on{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ── VIEWS ── */
+.view{display:none;padding:24px;animation:fadeIn .2s ease}
+.view.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── KPI ROW ── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--surf);border-radius:var(--r);padding:14px 16px;border:0.5px solid var(--b0)}
+.kpi-l{font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+.kpi-v{font-size:22px;font-weight:500;line-height:1}
+.kpi-s{font-size:11px;color:var(--ts);margin-top:5px}
+
+/* ── REPORT CARDS ── */
+.rgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.rc{background:var(--card);border:0.5px solid var(--b0);border-radius:var(--r);overflow:hidden;transition:border-color .15s}
+.rc:hover{border-color:var(--b1)}
+.rc-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px 11px}
+.rc-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.rc-info{flex:1;margin-left:10px}
+.rc-t{font-size:13px;font-weight:500}
+.rc-s{font-size:11px;color:var(--ts);margin-top:1px}
+.spill{font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;border:none;cursor:pointer;font-family:inherit;letter-spacing:.04em}
+.sp-p{background:rgba(239,159,39,.15);color:var(--amber)}
+.sp-r{background:rgba(58,123,213,.15);color:#6ba4f0}
+.sp-d{background:rgba(29,158,117,.15);color:#2dc99a}
+.mrow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--b0)}
+.mcell{background:var(--card);padding:11px 13px}
+.mc-l{font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.mc-v{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-foot{padding:11px 16px;border-top:0.5px solid var(--b0);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pbar{flex:1;height:3px;background:var(--b0);border-radius:2px;overflow:hidden}
+.pfill{height:100%;border-radius:2px;transition:width .5s ease}
+.attach-tag{font-size:11px;color:var(--teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+
+/* ── ENTRY FORMS ── */
+.fsec{background:var(--card);border:0.5px solid var(--b0);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.fsec-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;user-select:none;transition:background .15s}
+.fsec-head:hover{background:var(--cardhov)}
+.fsh-l{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.fsh-r{display:flex;align-items:center;gap:8px}
+.chev{font-size:10px;color:var(--tm);transition:transform .2s}
+.fsec-body{padding:16px;border-top:0.5px solid var(--b0);display:none}
+.fsec-body.open{display:block}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.ff{display:flex;flex-direction:column;gap:5px}
+.fi{background:var(--surf);border:0.5px solid var(--b1);border-radius:var(--rm);color:var(--tp);font-size:13px;padding:8px 10px;width:100%;font-family:inherit;transition:border-color .15s}
+.fi:focus{outline:none;border-color:var(--goldd)}
+.fi::placeholder{color:var(--tm)}
+.fi.updated{border-color:var(--teal)}
+.fzone{border:0.5px dashed var(--b1);border-radius:var(--rm);padding:14px;text-align:center;cursor:pointer;position:relative;transition:border-color .15s;margin-bottom:14px}
+.fzone:hover{border-color:var(--b2)}
+.fzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fz-t{font-size:12px;color:var(--ts)}
+.fz-a{font-size:12px;color:var(--teal);margin-top:4px;min-height:16px}
+.fact-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{font-size:12px;font-weight:500;padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit;transition:all .15s;border:0.5px solid var(--b1);background:none;color:var(--ts)}
+.btn:hover{border-color:var(--b2);color:var(--tp)}
+.btn-gold{background:var(--gold);border-color:transparent;color:#1a1100}
+.btn-gold:hover{opacity:.88}
+.btn-teal{background:rgba(29,158,117,.15);border-color:rgba(29,158,117,.3);color:#2dc99a}
+.btn-teal:hover{background:rgba(29,158,117,.25)}
+.savemsg{font-size:11px;color:var(--teal);display:none;animation:fadeIn .2s}
+
+/* ── CEO PREVIEW MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border:0.5px solid var(--b1);border-radius:14px;width:100%;max-width:860px;margin:auto}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:0.5px solid var(--b0)}
+.modal-title{font-size:15px;font-weight:500}
+.modal-close{background:none;border:none;color:var(--ts);font-size:18px;cursor:pointer;line-height:1;padding:0 4px}
+.modal-close:hover{color:var(--tp)}
+.modal-body{padding:20px}
+.preview-section{margin-bottom:20px}
+.ps-title{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--tm);margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--b0)}
+.prev-table{width:100%;border-collapse:collapse;font-size:13px}
+.prev-table th{text-align:left;padding:7px 10px;border-bottom:0.5px solid var(--b0);color:var(--tm);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.prev-table td{padding:7px 10px;border-bottom:0.5px solid var(--b0);color:var(--tp)}
+.prev-table tr:last-child td{border-bottom:none}
+.prev-table tr:hover td{background:rgba(255,255,255,.02)}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:0.5px solid var(--b0)}
+
+/* ── EXPORT VIEW ── */
+.exp-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.exp-title{font-size:16px;font-weight:500;margin-bottom:3px}
+.exp-sub{font-size:12px;color:var(--ts)}
+.exp-btns{display:flex;gap:8px;flex-wrap:wrap}
+.chart-card{background:var(--card);border:0.5px solid var(--b0);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.cc-title{font-size:13px;font-weight:500;margin-bottom:2px}
+.cc-sub{font-size:11px;color:var(--ts);margin-bottom:14px}
+.legend{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ts)}
+.ld{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.mom-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.mom-tbl th{text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--b0);color:var(--tm);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.mom-tbl td{padding:8px 10px;border-bottom:0.5px solid var(--b0)}
+.mom-tbl tr:last-child td{border-bottom:none}
+.mom-tbl tr:hover td{background:rgba(255,255,255,.02)}
+.up{color:#2dc99a}.dn{color:var(--red)}
+.tbl-wrap{overflow-x:auto}
+
+/* ── TOAST ── */
+.toast-stack{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:200;pointer-events:none}
+.toast{background:var(--card);border:0.5px solid var(--goldd);border-radius:8px;padding:9px 15px;font-size:13px;color:var(--tp);opacity:0;transform:translateY(6px);transition:all .25s}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--b1);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="lbox">
+    <div class="llogo">Executive Office</div>
+    <div class="ltitle">Monthly Report Dashboard</div>
+    <div class="lsub">Select your role and enter your PIN to continue</div>
+    <div class="rtabs">
+      <button class="rtab active" onclick="setRole('finance',this)">Finance Team</button>
+      <button class="rtab" onclick="setRole('ceo',this)">CEO</button>
+    </div>
+    <label class="flabel">Enter PIN</label>
+    <div class="pinwrap">
+      <input class="pinfield" type="password" maxlength="4" id="pinInput" placeholder="••••" oninput="document.getElementById('lerr').textContent=''" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="lerr" id="lerr"></div>
+    <button class="lbtn" onclick="doLogin()">Access Dashboard</button>
+    <div class="lhint">Finance Team PIN: <strong>1234</strong> &nbsp;|&nbsp; CEO PIN: <strong>5678</strong></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-dot"></div>
+      <div class="tb-title">Monthly Report Dashboard</div>
+      <div class="tb-period" id="tbPeriod"></div>
+    </div>
+    <div class="tb-right">
+      <span class="rbadge" id="rbadge"></span>
+      <button class="icon-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="periodbar">
+    <div class="mscroll" id="mscroll"></div>
+    <select class="yrsel" id="yrsel"></select>
+  </div>
+
+  <div class="navrow" id="navrow"></div>
+
+  <!-- OVERVIEW -->
+  <div class="view on" id="view-overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="rgrid" id="rgrid"></div>
+  </div>
+
+  <!-- ENTRY -->
+  <div class="view" id="view-entry">
+    <div id="entryForms"></div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="view" id="view-export">
+    <div class="exp-header">
+      <div>
+        <div class="exp-title">Export & Month-on-Month</div>
+        <div class="exp-sub" id="expSub"></div>
+      </div>
+      <div class="exp-btns">
+        <button class="btn btn-gold" onclick="openPreview()">Preview full report</button>
+        <button class="btn" onclick="exportCSV()">Export CSV</button>
+        <button class="btn" onclick="exportFullTxt()">Download report (.txt)</button>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Month-on-month comparison</div>
+      <div class="cc-sub">Last 6 months — key financial metrics</div>
+      <div class="legend">
+        <span class="li"><span class="ld" style="background:#c9a84c"></span>Total Billed</span>
+        <span class="li"><span class="ld" style="background:#3a7bd5"></span>Total Expenses</span>
+        <span class="li"><span class="ld" style="background:#1d9e75"></span>AR Overdue (31d+)</span>
+        <span class="li"><span class="ld" style="background:#ef9f27"></span>Unbilled</span>
+      </div>
+      <div style="position:relative;height:260px"><canvas id="momChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Detailed month-on-month table</div>
+      <div class="tbl-wrap">
+        <table class="mom-tbl" id="momTbl"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Report Preview</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Close</button>
+      <button class="btn btn-gold" onclick="exportFullTxt()">Download report</button>
+      <button class="btn" onclick="exportCSV()">Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script>
+// ── CONSTANTS ──
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const PINS={finance:'1234',ceo:'5678'};
+const SCYCLE=['pending','review','done'];
+const SCSS={pending:'sp-p',review:'sp-r',done:'sp-d'};
+const SLBL={pending:'Pending',review:'In Review',done:'Done'};
+const PROG={pending:8,review:50,done:100};
+const PCOL={pending:'#ef9f27',review:'#3a7bd5',done:'#1d9e75'};
+
+const REPORTS=[
+  {id:'expense',title:'Monthly Expense Tracker',sub:'Operational & departmental spend',icon:'💼',ibg:'rgba(201,168,76,.12)',
+   fields:[
+     {key:'totalExpenses',label:'Total Expenses (₹)',ph:'e.g. 2500000',type:'number'},
+     {key:'budget',label:'Budget (₹)',ph:'e.g. 3000000',type:'number'},
+     {key:'topCategory',label:'Top Expense Category',ph:'e.g. Payroll',type:'text'},
+     {key:'departments',label:'No. of Departments',ph:'e.g. 8',type:'number'},
+     {key:'notes',label:'Remarks',ph:'Any notes...',type:'text'}
+   ],
+   disp:[{l:'Total Expenses',k:'totalExpenses',f:'inr'},{l:'Budget',k:'budget',f:'inr'},{l:'Top Category',k:'topCategory',f:'str'}]
+  },
+  {id:'billed',title:'Billed Invoice Tracker',sub:'Invoices raised & collected',icon:'📄',ibg:'rgba(58,123,213,.12)',
+   fields:[
+     {key:'totalBilled',label:'Total Billed (₹)',ph:'e.g. 5000000',type:'number'},
+     {key:'collected',label:'Amount Collected (₹)',ph:'e.g. 3800000',type:'number'},
+     {key:'invoiceCount',label:'No. of Invoices',ph:'e.g. 42',type:'number'},
+     {key:'avgDays',label:'Avg Collection Days',ph:'e.g. 28',type:'number'},
+     {key:'notes',label:'Remarks',ph:'Any notes...',type:'text'}
+   ],
+   disp:[{l:'Total Billed',k:'totalBilled',f:'inr'},{l:'Collected',k:'collected',f:'inr'},{l:'Invoices',k:'invoiceCount',f:'str'}]
+  },
+  {id:'ar',title:'AR Ageing File',sub:'Accounts receivable breakdown',icon:'📊',ibg:'rgba(224,85,85,.12)',
+   fields:[
+     {key:'ar030',label:'0–30 Days (₹)',ph:'e.g. 1200000',type:'number'},
+     {key:'ar3160',label:'31–60 Days (₹)',ph:'e.g. 600000',type:'number'},
+     {key:'ar60plus',label:'60+ Days (₹)',ph:'e.g. 300000',type:'number'},
+     {key:'totalClients',label:'Total Clients',ph:'e.g. 24',type:'number'},
+     {key:'notes',label:'Remarks',ph:'Any notes...',type:'text'}
+   ],
+   disp:[{l:'0–30 Days',k:'ar030',f:'inr'},{l:'31–60 Days',k:'ar3160',f:'inr'},{l:'60+ Days',k:'ar60plus',f:'inr'}]
+  },
+  {id:'unbilled',title:'Unbilled File',sub:'Work done, not yet invoiced',icon:'🔖',ibg:'rgba(239,159,39,.12)',
+   fields:[
+     {key:'unbilledAmt',label:'Unbilled Amount (₹)',ph:'e.g. 1800000',type:'number'},
+     {key:'clientCount',label:'No. of Clients',ph:'e.g. 11',type:'number'},
+     {key:'avgAge',label:'Avg Age (days)',ph:'e.g. 22',type:'number'},
+     {key:'notes',label:'Remarks',ph:'e.g. 3 clients in closing stage',type:'text'}
+   ],
+   disp:[{l:'Unbilled Amt',k:'unbilledAmt',f:'inr'},{l:'Clients',k:'clientCount',f:'str'},{l:'Avg Age (days)',k:'avgAge',f:'str'}]
+  },
+  {id:'tds',title:'TDS Filing Report',sub:'Tax deducted at source compliance',icon:'🏛️',ibg:'rgba(29,158,117,.12)',
+   fields:[
+     {key:'tdsDeducted',label:'TDS Deducted (₹)',ph:'e.g. 450000',type:'number'},
+     {key:'tdsFiled',label:'TDS Filed (₹)',ph:'e.g. 450000',type:'number'},
+     {key:'dueDate',label:'Due Date',ph:'e.g. 7th Feb 2025',type:'text'},
+     {key:'filedOnTime',label:'Filed On Time?',ph:'Yes / No / Partial',type:'text'},
+     {key:'notes',label:'Remarks',ph:'Any notes...',type:'text'}
+   ],
+   disp:[{l:'TDS Deducted',k:'tdsDeducted',f:'inr'},{l:'TDS Filed',k:'tdsFiled',f:'inr'},{l:'Due Date',k:'dueDate',f:'str'}]
+  }
+];
+
+// ── STATE ──
+let role=null, selY=new Date().getFullYear(), selM=new Date().getMonth();
+let momChartInst=null;
+
+// ── STORAGE ──
+function dbKey(y,m){return 'mrd_'+y+'_'+m}
+function getMonth(y,m){
+  const k=dbKey(y,m);
+  let d=null;
+  try{d=JSON.parse(localStorage.getItem(k))}catch(e){}
+  if(!d){d={reports:{}}}
+  REPORTS.forEach(r=>{
+    if(!d.reports[r.id])d.reports[r.id]={status:'pending',data:{},file:null}
+  });
+  return d;
+}
+function saveMonth(y,m,d){
+  try{localStorage.setItem(dbKey(y,m),JSON.stringify(d))}catch(e){}
+}
+
+// ── FORMAT ──
+function fInr(v){const n=parseFloat(v);if(!v&&v!==0||isNaN(n))return '—';return '₹'+Math.round(n).toLocaleString('en-IN')}
+function fVal(v,f){return f==='inr'?fInr(v):(v||'—')}
+
+// ── TOAST ──
+function toast(msg){
+  const s=document.getElementById('toastStack');
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  s.appendChild(t);setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2600);
+}
+
+// ── LOGIN ──
+function setRole(r,el){
+  role=r;
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+function doLogin(){
+  const pin=document.getElementById('pinInput').value;
+  if(!role){document.getElementById('lerr').textContent='Please select a role above';return}
+  if(pin!==PINS[role]){document.getElementById('lerr').textContent='Incorrect PIN — please try again';return}
+  document.getElementById('loginScreen').style.display='none';
+  const app=document.getElementById('app');app.style.display='flex';app.style.flexDirection='column';
+  document.getElementById('rbadge').textContent=role==='ceo'?'CEO':'Finance Team';
+  document.getElementById('rbadge').className='rbadge '+(role==='ceo'?'rb-ceo':'rb-finance');
+  buildNav();buildPeriodBar();renderAll();
+}
+function doLogout(){
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('pinInput').value='';
+  role=null;
+  document.querySelectorAll('.rtab').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('lerr').textContent='';
+}
+
+// ── NAV ──
+function buildNav(){
+  const nav=document.getElementById('navrow');nav.innerHTML='';
+  const tabs=role==='ceo'
+    ?[['overview','Dashboard'],['export','Export & Compare']]
+    :[['overview','Overview'],['entry','Data Entry']];
+  tabs.forEach(([id,lbl],i)=>{
+    const b=document.createElement('button');
+    b.className='ntab'+(i===0?' on':'');b.textContent=lbl;
+    b.onclick=()=>{
+      document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+      document.getElementById('view-'+id).classList.add('on');
+      if(id==='export')renderExport();
+      if(id==='entry')renderEntry();
+    };
+    nav.appendChild(b);
+  });
+}
+
+// ── PERIOD BAR ──
+function buildPeriodBar(){
+  const ms=document.getElementById('mscroll');ms.innerHTML='';
+  MONTHS.forEach((m,i)=>{
+    const b=document.createElement('button');b.className='mpill'+(i===selM?' on':'');
+    b.textContent=m;b.onclick=()=>{selM=i;renderAll()};ms.appendChild(b);
+  });
+  const yr=document.getElementById('yrsel');yr.innerHTML='';
+  for(let y=new Date().getFullYear()-2;y<=new Date().getFullYear()+1;y++){
+    const o=document.createElement('option');o.value=y;o.textContent=y;if(y===selY)o.selected=true;yr.appendChild(o);
+  }
+  yr.onchange=()=>{selY=parseInt(yr.value);renderAll()};
+}
+function updatePills(){
+  document.querySelectorAll('.mpill').forEach((b,i)=>b.classList.toggle('on',i===selM));
+  document.getElementById('tbPeriod').textContent=MFULL[selM]+' '+selY;
+}
+
+// ── RENDER ALL ──
+function renderAll(){
+  updatePills();
+  renderOverview();
+  const activeView=document.querySelector('.view.on');
+  if(activeView){
+    const id=activeView.id.replace('view-','');
+    if(id==='entry')renderEntry();
+    if(id==='export')renderExport();
+  }
+}
+
+// ── OVERVIEW ──
+function renderOverview(){
+  const md=getMonth(selY,selM);
+  const reps=Object.values(md.reports);
+  const done=reps.filter(r=>r.status==='done').length;
+  const rev=reps.filter(r=>r.status==='review').length;
+  const pend=reps.filter(r=>r.status==='pending').length;
+  const tb=parseFloat(md.reports.billed?.data?.totalBilled)||0;
+  const te=parseFloat(md.reports.expense?.data?.totalExpenses)||0;
+
+  document.getElementById('kpis').innerHTML=[
+    {l:'Reports Done',v:done+' / '+REPORTS.length,s:'completed this month',c:'#2dc99a'},
+    {l:'In Review',v:rev,s:'pending approval',c:'#6ba4f0'},
+    {l:'Action Needed',v:pend,s:'still pending',c:'#ef9f27'},
+    {l:'Total Billed',v:tb?fInr(tb):'No data',s:MFULL[selM]+' '+selY,c:'#c9a84c'},
+    {l:'Total Expenses',v:te?fInr(te):'No data',s:MFULL[selM]+' '+selY,c:'#c9a84c'},
+  ].map(k=>`<div class="kpi"><div class="kpi-l">${k.l}</div><div class="kpi-v" style="color:${k.c}">${k.v}</div><div class="kpi-s">${k.s}</div></div>`).join('');
+
+  const grid=document.getElementById('rgrid');grid.innerHTML='';
+  REPORTS.forEach(r=>{
+    const rd=md.reports[r.id];
+    const canCycle=role==='finance';
+    const metrics=r.disp.map(d=>`<div class="mcell"><div class="mc-l">${d.l}</div><div class="mc-v" title="${fVal(rd.data[d.k],d.f)}">${fVal(rd.data[d.k],d.f)}</div></div>`).join('');
+    const pct=PROG[rd.status];const pc=PCOL[rd.status];
+    const card=document.createElement('div');card.className='rc';
+    card.innerHTML=`
+      <div class="rc-head">
+        <div class="rc-icon" style="background:${r.ibg};font-size:16px">${r.icon}</div>
+        <div class="rc-info">
+          <div class="rc-t">${r.title}</div>
+          <div class="rc-s">${r.sub}</div>
+        </div>
+        <button class="spill ${SCSS[rd.status]}" id="sp-${r.id}" ${canCycle?`onclick="cycleStatus('${r.id}')"`:'style="cursor:default"'}>${SLBL[rd.status]}</button>
+      </div>
+      <div class="mrow">${metrics}</div>
+      <div class="rc-foot">
+        <div class="pbar"><div class="pfill" style="width:${pct}%;background:${pc}"></div></div>
+        ${rd.file?`<div class="attach-tag" title="${rd.file}">📎 ${rd.file}</div>`:''}
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function cycleStatus(rid){
+  const md=getMonth(selY,selM);
+  const idx=SCYCLE.indexOf(md.reports[rid].status);
+  md.reports[rid].status=SCYCLE[(idx+1)%SCYCLE.length];
+  saveMonth(selY,selM,md);
+  toast('Status → '+SLBL[md.reports[rid].status]);
+  renderAll();
+}
+
+// ── DATA ENTRY ──
+function renderEntry(){
+  const md=getMonth(selY,selM);
+  const ef=document.getElementById('entryForms');ef.innerHTML='';
+  REPORTS.forEach(r=>{
+    const rd=md.reports[r.id];
+    const sec=document.createElement('div');sec.className='fsec';
+    sec.innerHTML=`
+      <div class="fsec-head" onclick="toggleFS('fsb-${r.id}','chev-${r.id}')">
+        <div class="fsh-l"><span style="font-size:15px">${r.icon}</span>${r.title}</div>
+        <div class="fsh-r">
+          <span class="spill ${SCSS[rd.status]}" id="sp2-${r.id}">${SLBL[rd.status]}</span>
+          <span class="chev" id="chev-${r.id}">▼</span>
+        </div>
+      </div>
+      <div class="fsec-body" id="fsb-${r.id}">
+        <div class="fgrid">
+          ${r.fields.map(f=>`
+            <div class="ff">
+              <label class="flabel">${f.label}</label>
+              <input class="fi" id="fi-${r.id}-${f.key}" type="${f.type||'text'}" placeholder="${f.ph}" value="${rd.data[f.key]||''}" oninput="this.classList.add('updated')">
+            </div>`).join('')}
+        </div>
+        <div class="fzone">
+          <input type="file" accept=".xlsx,.xls,.csv,.pdf" onchange="attachFile('${r.id}',this)">
+          <div class="fz-t">📎 Attach file (Excel / CSV / PDF)</div>
+          <div class="fz-a" id="fa-${r.id}">${rd.file?'Attached: '+rd.file:''}</div>
+        </div>
+        <div class="fact-row">
+          <button class="btn btn-gold" onclick="saveEntry('${r.id}')">Save data</button>
+          <button class="btn btn-teal" onclick="markStatus('${r.id}','review')">Mark In Review</button>
+          <button class="btn btn-teal" onclick="markStatus('${r.id}','done')">Mark Done</button>
+          <button class="btn" onclick="clearEntry('${r.id}')">Clear</button>
+          <span class="savemsg" id="sm-${r.id}">✓ Saved</span>
+        </div>
+      </div>`;
+    ef.appendChild(sec);
+  });
+}
+
+function toggleFS(bodyId,chevId){
+  const b=document.getElementById(bodyId);
+  const c=document.getElementById(chevId);
+  const open=b.classList.toggle('open');
+  c.textContent=open?'▲':'▼';
+}
+
+function saveEntry(rid){
+  const md=getMonth(selY,selM);
+  const r=REPORTS.find(x=>x.id===rid);
+  r.fields.forEach(f=>{
+    const el=document.getElementById('fi-'+rid+'-'+f.key);
+    if(el){md.reports[rid].data[f.key]=el.value;el.classList.remove('updated')}
+  });
+  saveMonth(selY,selM,md);
+  const sm=document.getElementById('sm-'+rid);sm.style.display='inline';
+  setTimeout(()=>sm.style.display='none',2200);
+  toast('Data saved — '+r.title);
+  renderOverview();
+}
+
+function markStatus(rid,status){
+  const md=getMonth(selY,selM);
+  md.reports[rid].status=status;
+  saveMonth(selY,selM,md);
+  toast('Marked as '+SLBL[status]);
+  renderEntry();renderOverview();
+}
+
+function clearEntry(rid){
+  const md=getMonth(selY,selM);
+  md.reports[rid].data={};
+  saveMonth(selY,selM,md);
+  REPORTS.find(x=>x.id===rid).fields.forEach(f=>{
+    const el=document.getElementById('fi-'+rid+'-'+f.key);if(el)el.value='';
+  });
+  toast('Data cleared');renderOverview();
+}
+
+function attachFile(rid,input){
+  if(!input.files[0])return;
+  const md=getMonth(selY,selM);
+  md.reports[rid].file=input.files[0].name;
+  saveMonth(selY,selM,md);
+  document.getElementById('fa-'+rid).textContent='Attached: '+input.files[0].name;
+  toast('File attached: '+input.files[0].name);
+  renderOverview();
+}
+
+// ── LAST 6 MONTHS ──
+function last6(){
+  const res=[];let y=selY,m=selM;
+  for(let i=0;i<6;i++){
+    res.unshift({y,m,label:MONTHS[m]+" '"+String(y).slice(2)});
+    m--;if(m<0){m=11;y--}
+  }
+  return res;
+}
+
+// ── EXPORT VIEW ──
+function renderExport(){
+  document.getElementById('expSub').textContent='Showing: '+MFULL[selM]+' '+selY+' + last 6 months trend';
+  const months=last6();
+  const bData=months.map(({y,m})=>parseFloat(getMonth(y,m).reports.billed?.data?.totalBilled)||0);
+  const eData=months.map(({y,m})=>parseFloat(getMonth(y,m).reports.expense?.data?.totalExpenses)||0);
+  const arData=months.map(({y,m})=>{const d=getMonth(y,m).reports.ar?.data;return(parseFloat(d?.ar3160)||0)+(parseFloat(d?.ar60plus)||0)});
+  const ubData=months.map(({y,m})=>parseFloat(getMonth(y,m).reports.unbilled?.data?.unbilledAmt)||0);
+
+  if(momChartInst)momChartInst.destroy();
+  momChartInst=new Chart(document.getElementById('momChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:months.map(x=>x.label),
+      datasets:[
+        {label:'Billed',data:bData,backgroundColor:'rgba(201,168,76,.75)',borderRadius:4},
+        {label:'Expenses',data:eData,backgroundColor:'rgba(58,123,213,.75)',borderRadius:4},
+        {label:'AR Overdue',data:arData,backgroundColor:'rgba(29,158,117,.75)',borderRadius:4},
+        {label:'Unbilled',data:ubData,backgroundColor:'rgba(239,159,39,.75)',borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fInr(c.raw)}}},
+      scales:{
+        x:{ticks:{color:'#7a7f98',font:{size:11}},grid:{color:'rgba(255,255,255,.04)'},autoSkip:false},
+        y:{ticks:{color:'#7a7f98',font:{size:11},callback:v=>'₹'+Math.round(v/100000)+'L'},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+
+  const tbl=document.getElementById('momTbl');
+  tbl.innerHTML=`<thead><tr>
+    <th>Month</th><th>Total Billed</th><th>MoM</th><th>Total Expenses</th><th>AR Overdue</th><th>Unbilled</th><th>TDS Filed?</th><th>Completion</th>
+  </tr></thead><tbody>${months.map(({y,m,label},i)=>{
+    const md=getMonth(y,m);
+    const b=parseFloat(md.reports.billed?.data?.totalBilled)||0;
+    const pb=i>0?(parseFloat(getMonth(months[i-1].y,months[i-1].m).reports.billed?.data?.totalBilled)||0):0;
+    const chg=pb&&b?((b-pb)/pb*100):null;
+    const chgStr=chg!=null?(chg>=0?`<span class="up">+${chg.toFixed(1)}%</span>`:`<span class="dn">${chg.toFixed(1)}%</span>`):'—';
+    const done=Object.values(md.reports).filter(r=>r.status==='done').length;
+    const ar=(parseFloat(md.reports.ar?.data?.ar3160)||0)+(parseFloat(md.reports.ar?.data?.ar60plus)||0);
+    return `<tr>
+      <td style="font-weight:500;white-space:nowrap">${label}</td>
+      <td>${fInr(md.reports.billed?.data?.totalBilled)}</td>
+      <td>${chgStr}</td>
+      <td>${fInr(md.reports.expense?.data?.totalExpenses)}</td>
+      <td>${ar?fInr(ar):'—'}</td>
+      <td>${fInr(md.reports.unbilled?.data?.unbilledAmt)}</td>
+      <td>${md.reports.tds?.data?.filedOnTime||'—'}</td>
+      <td><span class="spill ${done===5?'sp-d':done>0?'sp-r':'sp-p'}" style="cursor:default">${done}/5</span></td>
+    </tr>`;
+  }).join('')}</tbody>`;
+}
+
+// ── PREVIEW MODAL ──
+function openPreview(){
+  const md=getMonth(selY,selM);
+  let html=`<div class="preview-section"><div class="ps-title">Period: ${MFULL[selM]} ${selY}</div>`;
+  REPORTS.forEach(r=>{
+    const rd=md.reports[r.id];
+    html+=`<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:500">${r.icon} ${r.title}</div>
+        <span class="spill ${SCSS[rd.status]}" style="cursor:default">${SLBL[rd.status]}</span>
+      </div>
+      <table class="prev-table"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+        ${r.fields.map(f=>`<tr><td style="color:var(--ts)">${f.label.replace(' (₹)','')}</td><td>${f.type==='number'?fInr(rd.data[f.key]):(rd.data[f.key]||'—')}</td></tr>`).join('')}
+        ${rd.file?`<tr><td style="color:var(--ts)">Attachment</td><td style="color:var(--teal)">📎 ${rd.file}</td></tr>`:''}
+      </tbody></table>
+    </div>`;
+  });
+  html+='</div>';
+  document.getElementById('modalTitle').textContent='Full Report — '+MFULL[selM]+' '+selY;
+  document.getElementById('modalBody').innerHTML=html;
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('open')}
+
+// ── EXPORTS ──
+function exportFullTxt(){
+  const months=last6();
+  const md=getMonth(selY,selM);
+  const lines=['CEO MONTHLY REPORT','='.repeat(50),'Period: '+MFULL[selM]+' '+selY,'Generated: '+new Date().toLocaleString('en-IN'),'',''];
+  REPORTS.forEach(r=>{
+    const rd=md.reports[r.id];
+    lines.push('['+r.title.toUpperCase()+']');
+    lines.push('Status: '+SLBL[rd.status]);
+    r.fields.forEach(f=>{
+      const v=f.type==='number'?fInr(rd.data[f.key]):(rd.data[f.key]||'—');
+      lines.push('  '+f.label.replace(' (₹)','')+': '+v);
+    });
+    if(rd.file)lines.push('  Attachment: '+rd.file);
+    lines.push('');
+  });
+  lines.push('','MONTH-ON-MONTH SUMMARY','='.repeat(50));
+  lines.push('Month | Billed | Expenses | AR Overdue | Unbilled | TDS Filed? | Completion');
+  lines.push('-'.repeat(90));
+  months.forEach(({y,m,label})=>{
+    const d=getMonth(y,m);
+    const ar=(parseFloat(d.reports.ar?.data?.ar3160)||0)+(parseFloat(d.reports.ar?.data?.ar60plus)||0);
+    const done=Object.values(d.reports).filter(r=>r.status==='done').length;
+    lines.push([label,fInr(d.reports.billed?.data?.totalBilled),fInr(d.reports.expense?.data?.totalExpenses),ar?fInr(ar):'—',fInr(d.reports.unbilled?.data?.unbilledAmt),d.reports.tds?.data?.filedOnTime||'—',done+'/5'].join(' | '));
+  });
+  dl(lines.join('\n'),'Monthly_Report_'+MFULL[selM]+'_'+selY+'.txt','text/plain');
+  toast('Report downloaded');
+}
+
+function exportCSV(){
+  const months=last6();
+  const rows=[['Month','Total Billed','Total Expenses','AR 0-30','AR 31-60','AR 60+','Unbilled','TDS Deducted','TDS Filed?','Invoice Count','Completion']];
+  months.forEach(({y,m,label})=>{
+    const d=getMonth(y,m);const rp=d.reports;
+    const done=Object.values(rp).filter(r=>r.status==='done').length;
+    rows.push([label,rp.billed?.data?.totalBilled||'',rp.expense?.data?.totalExpenses||'',rp.ar?.data?.ar030||'',rp.ar?.data?.ar3160||'',rp.ar?.data?.ar60plus||'',rp.unbilled?.data?.unbilledAmt||'',rp.tds?.data?.tdsDeducted||'',rp.tds?.data?.filedOnTime||'',rp.billed?.data?.invoiceCount||'',done+'/5']);
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  dl(csv,'Report_Data_'+MFULL[selM]+'_'+selY+'.csv','text/csv');
+  toast('CSV exported');
+}
+
+function dl(content,name,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name;a.click();
+}
+
+// ── INIT ──
+document.getElementById('tbPeriod').textContent=MFULL[selM]+' '+selY;
+</script>
+</body>
+</html>
